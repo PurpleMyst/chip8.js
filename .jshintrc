@@ -1,0 +1,8 @@
+{
+    "esversion": 6,
+    "eqeqeq": true,
+    "browser": true,
+    "module": true,
+    "devel": true,
+    "undef": true
+}
