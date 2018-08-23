@@ -57,6 +57,11 @@ export class Chip8Interpreter {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
 
+    // Key handling
+    state: "running" | "waitkeypress" | "finished";
+    keys: Uint8Array;
+    keypressRegister: number | null;
+
     constructor(canvas: HTMLCanvasElement, width: number = 64, height: number = 32) {
         this.memory = new Uint8Array(4096);
 
@@ -81,6 +86,10 @@ export class Chip8Interpreter {
 
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
+
+        this.state = "running";
+        this.keys = new Uint8Array(16);
+        this.keypressRegister = null;
 
         this._loadCharacters();
     }
@@ -257,7 +266,7 @@ export class Chip8Interpreter {
 
                     default: {
                         console.error(`Unknown instruction: ${instruction.toString(16)}`);
-                        return "break";
+                        this.state = "finished";
                     }
                 }
                 break;
@@ -266,6 +275,12 @@ export class Chip8Interpreter {
             case 0xA: {
                 const address = extractAddress(instruction);
                 this.addressRegister = address;
+                break;
+            }
+
+            case 0xC: {
+                const [register, constant] = extractRegisterAndConstant(instruction);
+                this.registers[register] = Math.floor(Math.random() * 256) & constant;
                 break;
             }
 
@@ -290,9 +305,64 @@ export class Chip8Interpreter {
                 break;
             }
 
+            case 0xE: {
+                const register = extractRegister(instruction);
+
+                switch (instruction & 0xFF) {
+                    case 0x9E: {
+                        if (this.keys[this.registers[register]]) {
+                            this.pc += 2;
+                        }
+                        break;
+                    }
+
+                    case 0xA1: {
+                        if (!this.keys[this.registers[register]]) {
+                            this.pc += 2;
+                        }
+                        break;
+                    }
+
+                    default: {
+                        console.error(`Unknown instruction: ${instruction.toString(16)}`);
+                        this.state = "finished";
+                    }
+                }
+
+                break;
+            }
+
             case 0xF: {
                 const register = extractRegister(instruction);
+
                 switch (instruction & 0xFF) {
+                    case 0x07: {
+                        this.registers[register] = this.delayTimer;
+                        break;
+                    }
+
+                    case 0x0A: {
+                        this.state = "waitkeypress";
+                        this.keypressRegister = register;
+                        break;
+                    }
+
+                    case 0x15: {
+                        this.delayTimer = this.registers[register];
+                        break;
+                    }
+
+                    case 0x18: {
+                        this.soundTimer = this.registers[register];
+                        break;
+                    }
+
+                    case 0x1E: {
+                        this.addressRegister += this.registers[register];
+                        this.addressRegister &= 0xFFFF;
+                        break;
+                    }
+
                     case 0x29: {
                         this.addressRegister = 5 * this.registers[register];
                         break;
@@ -323,15 +393,9 @@ export class Chip8Interpreter {
                         break;
                     }
 
-                    case 0x1E: {
-                        this.addressRegister += this.registers[register];
-                        this.addressRegister &= 0xFFFF;
-                        break;
-                    }
-
                     default: {
                         console.error(`Unknown instruction: ${instruction.toString(16)}`);
-                        return "break";
+                        this.state = "finished";
                     }
                 }
                 break;
@@ -339,13 +403,27 @@ export class Chip8Interpreter {
 
             default:
                 console.error(`Unknown instruction: ${instruction.toString(16)}`);
-                return "break";
+                this.state = "finished";
         }
     }
 
+    keydown(key: number) {
+        this.keys[key] = 1;
+        if (this.state == "waitkeypress") {
+            console.assert(this.keypressRegister !== null);
+            this.registers[this.keypressRegister] = key;
+        }
+    }
+
+    keyup(key: number) {
+        this.keys[key] = 0;
+    }
+
     cycle() {
-        const instruction = (this.memory[this.pc] << 8) | (this.memory[this.pc + 1]);
-        this.pc += 2;
-        return this.executeInstruction(instruction);
+        if (this.state === "running") {
+            const instruction = (this.memory[this.pc] << 8) | (this.memory[this.pc + 1]);
+            this.pc += 2;
+            return this.executeInstruction(instruction);
+        }
     }
 }

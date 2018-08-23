@@ -15,6 +15,18 @@ askForROMFile()
         const rom = new Uint8Array(data);
         interpreter.loadROMData(rom);
 
+        const keyToIndex = (key: string) => parseInt(key, 16);
+
+        window.addEventListener("keydown", e => {
+            let index = keyToIndex(e.key);
+            if (!isNaN(index)) interpreter.keydown(index);
+        });
+
+        window.addEventListener("keyup", e => {
+            let index = keyToIndex(e.key);
+            if (!isNaN(index)) interpreter.keyup(index);
+        });
+
         window.requestAnimationFrame(function loop() {
             interpreter.cycle();
             window.requestAnimationFrame(loop);
