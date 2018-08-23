@@ -1,62 +1,87 @@
-/* jshint esversion: 6, eqeqeq: true */
 "use strict";
 
 export const TIMER_FREQUENCY = 60 /* hz */;
+export const STACK_LIMIT = 16 /* calls */;
 
-function extractAddress(instruction) {
+function extractAddress(instruction: number) {
     return instruction & 0x0FFF;
 }
 
-function extractRegister(instruction) {
+function extractRegister(instruction: number) {
     return (instruction & 0x0F00) >> (8);
 }
 
-function extractRegisterAndConstant(instruction) {
+function extractRegisterAndConstant(instruction: number) {
     return [(instruction & 0x0F00) >> 8, instruction & 0x00FF];
 }
 
-function extractTwoRegisters(instruction) {
+function extractTwoRegisters(instruction: number) {
     return [(instruction & 0x0F00) >> 8, (instruction & 0x00F0) >> 4];
 }
 
-function extractTwoRegistersAndConstant(instruction) {
+function extractTwoRegistersAndConstant(instruction: number) {
     return [(instruction & 0x0F00) >> 8, (instruction & 0x00F0) >> 4, instruction & 0x000F];
 }
 
 export class Chip8Interpreter {
-    constructor(canvas, width = 64, height = 32) {
-        // Memory
+    // Main memory
+    // 0x000-0x1FF is internal memory which we utilize for character ROM.
+    // 0x200 and up is the program's memory
+    memory: Uint8Array;
+
+    // 16 registers
+    registers: Uint8Array;
+
+    // I register
+    addressRegister: number;
+
+    // Program counter, must always be even.
+    pc: number;
+
+    // Stack, implemented as a stackpointer + array to be true to the spec.
+    sp: number;
+    stack: Uint16Array;
+
+    // Timers. The sound timer does nothing.
+    delayTimer: number;
+    soundTimer: number;
+
+    // Width in internal pixels (not screen pixels)
+    width: number;
+    height: number;
+
+    // Internal display. Each pixel is either 0 and 1.
+    display: Uint8Array;
+
+    // Canvas and context.
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+
+    constructor(canvas: HTMLCanvasElement, width: number = 64, height: number = 32) {
         this.memory = new Uint8Array(4096);
 
-        // Registers
         this.registers = new Uint8Array(16);
         this.addressRegister = 0;
         this.pc = 0x200;
 
-        // Call stack
         this.sp = -1;
-        this.stack = new Uint16Array(16);
+        this.stack = new Uint16Array(STACK_LIMIT);
 
-        // Timers
         this.delayTimer = 0;
         this.soundTimer = 0;
 
-        // Timer interval
-        this._timerInterval = setInterval(() => {
+        setInterval(() => {
             this.delayTimer -= 1;
             this.soundTimer -= 1;
         }, 1000 / TIMER_FREQUENCY);
 
-        // Display
         this.width = width;
         this.height = height;
         this.display = new Uint8Array(this.width * this.height);
 
-        // Canvas
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
 
-        // Character ROM
         this._loadCharacters();
     }
 
@@ -88,7 +113,7 @@ export class Chip8Interpreter {
         }
     }
 
-    loadROMData(data) {
+    loadROMData(data: Uint8Array) {
         for (let i = 0; i < data.length; ++i) {
             this.memory[this.pc + i] = data[i];
         }
@@ -109,7 +134,7 @@ export class Chip8Interpreter {
         }
     }
 
-    executeInstruction(instruction) {
+    executeInstruction(instruction: number) {
         switch ((instruction & 0xF000) >> (8 + 4)) {
             case 0: {
                 if (instruction === 0x00E0) {
