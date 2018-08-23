@@ -3,7 +3,11 @@
         "outDir": "./dist",
         "noImplicitAny": true,
         "module": "es6",
-        "target": "es3",
-        "allowJs": true
+        "target": "es5",
+        "allowJs": true,
+        "lib": [
+            "es2015",
+            "dom"
+        ]
     },
 }
