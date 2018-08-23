@@ -3,6 +3,26 @@
 
 export const TIMER_FREQUENCY = 60 /* hz */;
 
+function extractAddress(instruction) {
+    return instruction & 0x0FFF;
+}
+
+function extractRegister(instruction) {
+    return (instruction & 0x0F00) >> (8);
+}
+
+function extractRegisterAndConstant(instruction) {
+    return [(instruction & 0x0F00) >> 8, instruction & 0x00FF];
+}
+
+function extractTwoRegisters(instruction) {
+    return [(instruction & 0x0F00) >> 8, (instruction & 0x00F0) >> 4];
+}
+
+function extractTwoRegistersAndConstant(instruction) {
+    return [(instruction & 0x0F00) >> 8, (instruction & 0x00F0) >> 4, instruction & 0x000F];
+}
+
 export class Chip8Interpreter {
     constructor(canvas, width = 64, height = 32) {
         // Memory
@@ -89,26 +109,6 @@ export class Chip8Interpreter {
         }
     }
 
-    extractAddress(instruction) {
-        return instruction & 0x0FFF;
-    }
-
-    extractRegister(instruction) {
-        return (instruction & 0x0F00) >> (8);
-    }
-
-    extractRegisterAndConstant(instruction) {
-        return [(instruction & 0x0F00) >> 8, instruction & 0x00FF]
-    }
-
-    extractTwoRegisters(instruction) {
-        return [(instruction & 0x0F00) >> 8, (instruction & 0x00F0) >> 4];
-    }
-
-    extractTwoRegistersAndConstant(instruction) {
-        return [(instruction & 0x0F00) >> 8, (instruction & 0x00F0) >> 4, instruction & 0x000F];
-    }
-
     executeInstruction(instruction) {
         switch ((instruction & 0xF000) >> (8 + 4)) {
             case 0: {
@@ -125,19 +125,19 @@ export class Chip8Interpreter {
             }
 
             case 1: {
-                this.pc = this.extractAddress(instruction);
+                this.pc = extractAddress(instruction);
                 break;
             }
 
             case 2: {
                 this.sp += 1;
                 this.stack[this.sp] = this.pc;
-                this.pc = this.extractAddress(instruction);
+                this.pc = extractAddress(instruction);
                 break;
             }
 
             case 3: {
-                const [register, constant] = this.extractRegisterAndConstant(instruction);
+                const [register, constant] = extractRegisterAndConstant(instruction);
                 if (this.registers[register] === constant) {
                     this.pc += 2;
                 }
@@ -145,7 +145,7 @@ export class Chip8Interpreter {
             }
 
             case 4: {
-                const [register, constant] = this.extractRegisterAndConstant(instruction);
+                const [register, constant] = extractRegisterAndConstant(instruction);
                 if (this.registers[register] !== constant) {
                     this.pc += 2;
                 }
@@ -153,7 +153,7 @@ export class Chip8Interpreter {
             }
 
             case 5: {
-                const [registerX, registerY] = this.extractTwoRegisters(instruction);
+                const [registerX, registerY] = extractTwoRegisters(instruction);
                 if (this.registers[registerX] === this.registers[registerY]) {
                     this.pc += 2;
                 }
@@ -161,19 +161,19 @@ export class Chip8Interpreter {
             }
 
             case 6: {
-                const [register, constant] = this.extractRegisterAndConstant(instruction);
+                const [register, constant] = extractRegisterAndConstant(instruction);
                 this.registers[register] = constant;
                 break;
             }
 
             case 7: {
-                const [register, constant] = this.extractRegisterAndConstant(instruction);
+                const [register, constant] = extractRegisterAndConstant(instruction);
                 this.registers[register] += constant;
                 break;
             }
 
             case 8: {
-                const [registerX, registerY] = this.extractTwoRegisters(instruction);
+                const [registerX, registerY] = extractTwoRegisters(instruction);
                 switch (instruction & 0xF) {
                     case 0: {
                         this.registers[registerX] = this.registers[registerY];
@@ -239,13 +239,13 @@ export class Chip8Interpreter {
             }
 
             case 0xA: {
-                const address = this.extractAddress(instruction);
+                const address = extractAddress(instruction);
                 this.addressRegister = address;
                 break;
             }
 
             case 0xD: {
-                const [registerX, registerY, height] = this.extractTwoRegistersAndConstant(instruction);
+                const [registerX, registerY, height] = extractTwoRegistersAndConstant(instruction);
 
                 const screenX = this.registers[registerX];
                 const screenY = this.registers[registerY];
@@ -266,7 +266,7 @@ export class Chip8Interpreter {
             }
 
             case 0xF: {
-                const register = this.extractRegister(instruction);
+                const register = extractRegister(instruction);
                 switch (instruction & 0xFF) {
                     case 0x29: {
                         this.addressRegister = 5 * this.registers[register];
