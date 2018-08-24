@@ -274,9 +274,23 @@ export class Chip8Interpreter {
                 break;
             }
 
+            case 9: {
+                const [registerX, registerY] = extractTwoRegisters(instruction);
+                if (this.registers[registerX] !== this.registers[registerY]) {
+                    this.pc += 2;
+                }
+                break;
+            }
+
             case 0xA: {
                 const address = extractAddress(instruction);
                 this.addressRegister = address;
+                break;
+            }
+
+            case 0xB: {
+                const address = extractAddress(instruction);
+                this.pc = this.registers[0] + address;
                 break;
             }
 
