@@ -132,13 +132,15 @@ export class Chip8Interpreter {
         const pixelWidth = this.canvas.width / this.width;
         const pixelHeight = this.canvas.height / this.height;
 
+        this.ctx.fillStyle = "black";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+
+        this.ctx.fillStyle = "white";
         for (let y = 0; y < this.height; ++y) {
             for (let x = 0; x < this.width; ++x) {
                 const index = y * this.width + x;
                 const pixel = this.display[index];
-
-                this.ctx.fillStyle = pixel ? "white" : "black";
-                this.ctx.fillRect(x * pixelWidth, y * pixelHeight, pixelWidth, pixelHeight);
+                if (pixel) this.ctx.fillRect(x * pixelWidth, y * pixelHeight, pixelWidth, pixelHeight);
             }
         }
     }
